@@ -1,12 +1,10 @@
 import streamlit as st
 
-# Title
 st.set_page_config(page_title="Customer AI", page_icon="🤖")
 st.title("🤖 Customer Frustration Intelligence Engine")
 
 st.markdown("Analyze customer messages and prioritize responses intelligently.")
 
-# Input
 text = st.text_area("Enter customer message:")
 
 # Functions
@@ -23,19 +21,11 @@ def detect_emotion(text):
 
 def get_urgency(emotion):
     if emotion == "anger":
-        return "High"
+        return "High", 3
     elif emotion == "sadness":
-        return "Medium"
+        return "Medium", 2
     else:
-        return "Low"
-
-def get_priority(score, urgency):
-    if urgency == "High":
-        return score * 3
-    elif urgency == "Medium":
-        return score * 2
-    else:
-        return score
+        return "Low", 1
 
 def generate_response(emotion):
     if emotion == "anger":
@@ -53,8 +43,8 @@ if st.button("Analyze"):
         st.warning("Please enter a message")
     else:
         emotion, score = detect_emotion(text)
-        urgency = get_urgency(emotion)
-        priority = get_priority(score, urgency)
+        urgency, weight = get_urgency(emotion)
+        priority = score * weight
         response = generate_response(emotion)
 
         st.subheader("📊 Analysis Result")
@@ -70,6 +60,16 @@ if st.button("Analyze"):
             st.success("✅ Low Urgency")
 
         st.write(f"**Priority Score:** {priority:.2f}")
+
+        # 🔥 FORMULA SECTION (NEW)
+        st.subheader("🧮 Priority Calculation")
+
+        st.code("Priority Score = Confidence Score × Urgency Weight")
+
+        st.write(f"= {score:.2f} × {weight}")
+        st.write(f"= {priority:.2f}")
+
+        st.info("Higher score means higher priority for response.")
 
         st.subheader("💬 Suggested Response")
         st.success(response)
