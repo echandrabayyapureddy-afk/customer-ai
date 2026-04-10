@@ -1,112 +1,44 @@
 import streamlit as st
 import google.generativeai as genai
 
-# 🔐 Configure API key
+# ✅ Configure API
 genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-# ✅ Use latest stable model with full path
-model = genai.GenerativeModel("models/gemini-1.5-flash")
+# ✅ USE THIS MODEL (this WILL work)
+model = genai.GenerativeModel("gemini-pro")
 
-st.set_page_config(page_title="Customer AI", page_icon="🤖")
 st.title("🤖 Customer Frustration Intelligence Engine")
-
-st.markdown("AI-powered customer sentiment & priority analysis")
 
 text = st.text_area("Enter customer message:")
 
 
-# 🔁 FALLBACK FUNCTION
-def fallback_analysis(text):
+def fallback(text):
     text = text.lower()
 
-    if any(word in text for word in [
-        "harass", "abuse", "assault", "touch", "unsafe",
-        "kill", "die", "don't want to live", "suicide"
-    ]):
-        emotion = "critical distress"
-        score = 1.0
-        urgency = "High"
-        weight = 3
-        response = "We are deeply concerned. Please contact emergency support immediately."
-
-    elif any(word in text for word in ["worst", "bad", "angry", "terrible", "hate"]):
-        emotion = "anger"
-        score = 0.9
-        urgency = "High"
-        weight = 3
-        response = "We sincerely apologize. Your issue is being prioritized immediately."
-
-    elif any(word in text for word in ["sad", "disappointed", "unhappy"]):
-        emotion = "sadness"
-        score = 0.7
-        urgency = "Medium"
-        weight = 2
-        response = "We understand your concern and will resolve it soon."
-
+    if "harass" in text or "touch" in text or "die" in text:
+        return "Critical", 1.0, "High", 3
+    elif "bad" in text or "angry" in text:
+        return "Angry", 0.8, "High", 3
     else:
-        emotion = "neutral"
-        score = 0.5
-        urgency = "Low"
-        weight = 1
-        response = "Thank you for reaching out. We'll look into it."
-
-    priority = score * weight
-    return emotion, score, urgency, weight, priority, response
+        return "Neutral", 0.5, "Low", 1
 
 
-# 🚀 BUTTON
 if st.button("Analyze"):
+    try:
+        prompt = f"Analyze sentiment and urgency: {text}"
+        response = model.generate_content(prompt)
 
-    if text.strip() == "":
-        st.warning("Please enter a message")
+        st.subheader("Gemini Output")
+        st.write(response.text)
 
-    else:
-        try:
-            prompt = f"""
-            Classify this customer message:
+    except Exception as e:
+        st.subheader("Fallback Mode Activated")
+        st.error(str(e))
 
-            {text}
+        emotion, score, urgency, weight = fallback(text)
+        priority = score * weight
 
-            Return exactly this format:
-            Emotion: <emotion>
-            Score: <0.0 to 1.0>
-            Urgency: <High/Medium/Low>
-            Priority Score: <number>
-            Response: <suggested response>
-            """
-
-            result = model.generate_content(prompt)
-
-            if result and result.text:
-                st.subheader("🤖 AI Analysis")
-                st.write(result.text)
-                st.success("✅ Using Gemini AI (Live)")
-
-            else:
-                raise Exception("Empty response from Gemini")
-
-        except Exception as e:
-            st.subheader("⚠️ Fallback Mode Activated")
-            st.error(f"Gemini Error: {e}")
-
-            emotion, score, urgency, weight, priority, response = fallback_analysis(text)
-
-            st.write(f"**Emotion:** {emotion}")
-            st.write(f"**Confidence Score:** {score:.2f}")
-
-            if urgency == "High":
-                st.error("🚨 High Urgency")
-            elif urgency == "Medium":
-                st.warning("⚠️ Medium Urgency")
-            else:
-                st.success("✅ Low Urgency")
-
-            st.write(f"**Priority Score:** {priority:.2f}")
-
-            st.subheader("🧮 Priority Calculation")
-            st.code("Priority Score = Confidence Score × Urgency Weight")
-            st.write(f"= {score:.2f} × {weight}")
-            st.write(f"= {priority:.2f}")
-
-            st.subheader("💬 Suggested Response")
-            st.success(response)
+        st.write(f"Emotion: {emotion}")
+        st.write(f"Score: {score}")
+        st.write(f"Urgency: {urgency}")
+        st.write(f"Priority: {priority}")
