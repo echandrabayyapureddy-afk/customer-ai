@@ -1,10 +1,10 @@
 import streamlit as st
 import google.generativeai as genai
 
-# 🔐 Use Streamlit secrets (recommended)
-genai.configure(api_key=st.secrets["GEMINI_API_KEY"]) 
+# 🔐 Configure API key
+genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
 
-# ✅ Use lighter model
+# ✅ Use stable model
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 st.set_page_config(page_title="Customer AI", page_icon="🤖")
@@ -14,11 +14,22 @@ st.markdown("AI-powered customer sentiment & priority analysis")
 
 text = st.text_area("Enter customer message:")
 
-# 🔁 Fallback functions
+
+# 🔁 FALLBACK FUNCTION (IMPORTANT)
 def fallback_analysis(text):
     text = text.lower()
 
-    if any(word in text for word in ["worst", "bad", "angry", "terrible"]):
+    if any(word in text for word in [
+        "harass", "abuse", "assault", "touch", "unsafe",
+        "kill", "die", "don't want to live", "suicide"
+    ]):
+        emotion = "critical distress"
+        score = 1.0
+        urgency = "High"
+        weight = 3
+        response = "We are deeply concerned. Please contact emergency support immediately."
+
+    elif any(word in text for word in ["worst", "bad", "angry", "terrible", "hate"]):
         emotion = "anger"
         score = 0.9
         urgency = "High"
@@ -43,7 +54,7 @@ def fallback_analysis(text):
     return emotion, score, urgency, weight, priority, response
 
 
-# 🚀 Button
+# 🚀 BUTTON
 if st.button("Analyze"):
 
     if text.strip() == "":
@@ -51,31 +62,34 @@ if st.button("Analyze"):
 
     else:
         try:
-            # 🧠 Gemini prompt (short + efficient)
+            # 🧠 Simple prompt (less quota)
             prompt = f"""
-            Analyze this customer message:
+            Classify this message:
 
-            "{text}"
+            {text}
 
-            Return ONLY in this format:
-            Emotion:
-            Score (0-1):
-            Urgency (High/Medium/Low):
-            Weight (High=3, Medium=2, Low=1):
-            Response:
+            Return:
+            Emotion
+            Score (0-1)
+            Urgency (High/Medium/Low)
+            Priority Score
+            Response
             """
 
             response = model.generate_content(prompt)
-            output = response.text
 
-            st.subheader("🤖 AI Analysis")
-            st.write(output)
+            if response and response.text:
+                st.subheader("🤖 AI Analysis")
+                st.write(response.text)
+                st.success("Using Gemini AI")
 
-            st.success("Using Gemini AI")
+            else:
+                raise Exception("Empty response")
 
-        except:
-            # 🔁 FALLBACK
+        except Exception as e:
+            # 🔁 FALLBACK MODE
             st.subheader("⚠️ Fallback Mode Activated")
+            st.error(f"Gemini Error: {e}")
 
             emotion, score, urgency, weight, priority, response = fallback_analysis(text)
 
@@ -91,7 +105,7 @@ if st.button("Analyze"):
 
             st.write(f"**Priority Score:** {priority:.2f}")
 
-            # 🧮 Formula display
+            # 🧮 Formula
             st.subheader("🧮 Priority Calculation")
             st.code("Priority Score = Confidence Score × Urgency Weight")
             st.write(f"= {score:.2f} × {weight}")
@@ -99,5 +113,3 @@ if st.button("Analyze"):
 
             st.subheader("💬 Suggested Response")
             st.success(response)
-
-            st.info("Fallback logic used due to API limit")
