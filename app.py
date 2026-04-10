@@ -2,52 +2,51 @@ import streamlit as st
 import requests
 import time
 
-# 🔐 API KEY
 API_KEY = st.secrets["GEMINI_API_KEY"]
 
-# 🎨 UI
-st.set_page_config(page_title="Customer AI", page_icon="🤖")
-st.title("🤖 Customer Frustration Intelligence Engine")
-st.markdown("AI-powered customer sentiment & priority analysis")
+# 🎨 Page config
+st.set_page_config(page_title="Customer AI", page_icon="🤖", layout="centered")
 
-text = st.text_area("Enter customer message:")
+# 🎯 Title
+st.markdown("<h1 style='text-align: center;'>🤖 Customer Frustration Intelligence Engine</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center;'>AI-powered sentiment & priority analysis</p>", unsafe_allow_html=True)
+
+# 📥 Input
+text = st.text_area("💬 Enter customer message:", height=150)
 
 
-# 🔁 FALLBACK FUNCTION
+# 🔁 FALLBACK
 def fallback_analysis(text):
     text = text.lower()
 
     if any(word in text for word in ["harass", "abuse", "touch", "die"]):
-        return "critical distress", 1.0, "High", 3
+        return "Critical Distress", 100, "High", 3, "Immediate action required"
     elif any(word in text for word in ["angry", "bad", "worst"]):
-        return "anger", 0.8, "High", 3
+        return "Anger", 85, "High", 3, "We sincerely apologize. Issue prioritized."
+    elif any(word in text for word in ["sad", "disappointed"]):
+        return "Sadness", 65, "Medium", 2, "We understand your concern."
     else:
-        return "neutral", 0.5, "Low", 1
+        return "Neutral", 40, "Low", 1, "Thank you for your message."
 
 
 # 🚀 BUTTON
-if st.button("Analyze"):
+if st.button("🔍 Analyze"):
 
     if text.strip() == "":
-        st.warning("Please enter a message")
+        st.warning("⚠️ Please enter a message")
 
     else:
         try:
             time.sleep(2)
 
-            # 🔍 STEP 1: Get available models
+            # 🔍 Get models
             model_list_url = f"https://generativelanguage.googleapis.com/v1/models?key={API_KEY}"
             model_response = requests.get(model_list_url).json()
-
             models = model_response.get("models", [])
 
-            if not models:
-                raise Exception("No models available for this API key")
-
-            # 👉 Pick FIRST available model automatically
             model_name = models[0]["name"]
 
-            # 🔥 STEP 2: Use that model
+            # 🔥 API call
             url = f"https://generativelanguage.googleapis.com/v1/{model_name}:generateContent?key={API_KEY}"
 
             payload = {
@@ -62,28 +61,46 @@ if st.button("Analyze"):
                 data = response.json()
                 output = data["candidates"][0]["content"]["parts"][0]["text"]
 
-                st.subheader("🤖 Gemini AI Output")
-                st.success(f"Using model: {model_name}")
-                st.write(output)
+                st.success("🤖 Using Gemini AI")
+
+                # 🎨 Output box
+                st.markdown("### 📊 AI Analysis")
+                st.markdown(
+                    f"""
+                    <div style='background-color:#1e1e1e;padding:15px;border-radius:10px'>
+                    {output}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
             else:
                 raise Exception(response.text)
 
         except Exception as e:
-            # 🔁 FALLBACK MODE
-            st.subheader("⚠️ Fallback Mode Activated")
-            st.error(f"Gemini Error: {e}")
+            st.warning("⚠️ Fallback Mode Activated")
 
-            emotion, score, urgency, weight = fallback_analysis(text)
+            emotion, score, urgency, weight, response = fallback_analysis(text)
             priority = score * weight
 
-            st.write(f"**Emotion:** {emotion}")
-            st.write(f"**Score:** {score}")
-            st.write(f"**Urgency:** {urgency}")
-            st.write(f"**Priority Score:** {priority}")
+            # 🎨 METRICS UI
+            col1, col2, col3 = st.columns(3)
 
-            # 🧮 Formula (important for judges)
-            st.subheader("🧮 Priority Calculation")
-            st.code("Priority Score = Confidence Score × Urgency Weight")
-            st.write(f"= {score} × {weight}")
-            st.write(f"= {priority}")
+            col1.metric("🧠 Emotion", emotion)
+            col2.metric("📊 Score", f"{score}/100")
+            col3.metric("⚡ Urgency", urgency)
+
+            # 🎯 Priority Bar
+            st.markdown("### 🚨 Priority Level")
+            st.progress(min(priority / 300, 1.0))  # scaled
+
+            st.write(f"**Priority Score:** {priority}/300")
+
+            # 🧮 Formula
+            st.markdown("### 🧮 Calculation")
+            st.code("Priority = Score × Weight")
+            st.write(f"{score} × {weight} = {priority}")
+
+            # 💬 Response
+            st.markdown("### 💬 Suggested Response")
+            st.success(response)
