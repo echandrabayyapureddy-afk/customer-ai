@@ -4,14 +4,57 @@ import time
 
 API_KEY = st.secrets["GEMINI_API_KEY"]
 
-# 🎨 Page config
+# 🎨 PAGE CONFIG
 st.set_page_config(page_title="Customer AI", page_icon="🤖", layout="centered")
 
-# 🎯 Title
-st.markdown("<h1 style='text-align: center;'>🤖 Customer Frustration Intelligence Engine</h1>", unsafe_allow_html=True)
-st.markdown("<p style='text-align: center;'>AI-powered sentiment & priority analysis</p>", unsafe_allow_html=True)
+# 🌈 CUSTOM CSS (ANIMATIONS + UI)
+st.markdown("""
+<style>
+body {
+    background: linear-gradient(135deg, #1f1c2c, #928dab);
+    color: white;
+}
 
-# 📥 Input
+.title {
+    text-align: center;
+    font-size: 40px;
+    font-weight: bold;
+    animation: fadeIn 2s ease-in-out;
+}
+
+.subtitle {
+    text-align: center;
+    font-size: 18px;
+    color: #ddd;
+    animation: fadeIn 3s ease-in-out;
+}
+
+.card {
+    background: rgba(255,255,255,0.1);
+    padding: 20px;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    animation: slideUp 1s ease-in-out;
+    margin-top: 15px;
+}
+
+@keyframes fadeIn {
+    from {opacity: 0;}
+    to {opacity: 1;}
+}
+
+@keyframes slideUp {
+    from {transform: translateY(40px); opacity: 0;}
+    to {transform: translateY(0); opacity: 1;}
+}
+</style>
+""", unsafe_allow_html=True)
+
+# 🎯 TITLE
+st.markdown("<div class='title'>🤖 Customer Frustration Intelligence</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>AI-powered sentiment & priority analysis</div>", unsafe_allow_html=True)
+
+# 📥 INPUT
 text = st.text_area("💬 Enter customer message:", height=150)
 
 
@@ -30,77 +73,72 @@ def fallback_analysis(text):
 
 
 # 🚀 BUTTON
-if st.button("🔍 Analyze"):
+if st.button("🚀 Analyze Now"):
 
     if text.strip() == "":
         st.warning("⚠️ Please enter a message")
 
     else:
-        try:
-            time.sleep(2)
+        with st.spinner("Analyzing with AI... 🤖"):
+            try:
+                time.sleep(2)
 
-            # 🔍 Get models
-            model_list_url = f"https://generativelanguage.googleapis.com/v1/models?key={API_KEY}"
-            model_response = requests.get(model_list_url).json()
-            models = model_response.get("models", [])
+                # Get model
+                model_list_url = f"https://generativelanguage.googleapis.com/v1/models?key={API_KEY}"
+                model_response = requests.get(model_list_url).json()
+                model_name = model_response["models"][0]["name"]
 
-            model_name = models[0]["name"]
+                url = f"https://generativelanguage.googleapis.com/v1/{model_name}:generateContent?key={API_KEY}"
 
-            # 🔥 API call
-            url = f"https://generativelanguage.googleapis.com/v1/{model_name}:generateContent?key={API_KEY}"
+                payload = {
+                    "contents": [
+                        {"parts": [{"text": f"Analyze sentiment and urgency:\n{text}"}]}
+                    ]
+                }
 
-            payload = {
-                "contents": [
-                    {"parts": [{"text": f"Analyze sentiment and urgency:\n{text}"}]}
-                ]
-            }
+                response = requests.post(url, json=payload)
 
-            response = requests.post(url, json=payload)
+                if response.status_code == 200:
+                    data = response.json()
+                    output = data["candidates"][0]["content"]["parts"][0]["text"]
 
-            if response.status_code == 200:
-                data = response.json()
-                output = data["candidates"][0]["content"]["parts"][0]["text"]
+                    st.success("🤖 Using Gemini AI")
 
-                st.success("🤖 Using Gemini AI")
+                    st.markdown(f"<div class='card'>{output}</div>", unsafe_allow_html=True)
 
-                # 🎨 Output box
-                st.markdown("### 📊 AI Analysis")
-                st.markdown(
-                    f"""
-                    <div style='background-color:#1e1e1e;padding:15px;border-radius:10px'>
-                    {output}
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
+                else:
+                    raise Exception(response.text)
 
-            else:
-                raise Exception(response.text)
+            except:
+                st.warning("⚠️ Fallback Mode Activated")
 
-        except Exception as e:
-            st.warning("⚠️ Fallback Mode Activated")
+                emotion, score, urgency, weight, resp = fallback_analysis(text)
+                priority = score * weight
 
-            emotion, score, urgency, weight, response = fallback_analysis(text)
-            priority = score * weight
+                # 🎯 METRICS
+                col1, col2, col3 = st.columns(3)
 
-            # 🎨 METRICS UI
-            col1, col2, col3 = st.columns(3)
+                col1.metric("🧠 Emotion", emotion)
+                col2.metric("📊 Score", f"{score}/100")
+                col3.metric("⚡ Urgency", urgency)
 
-            col1.metric("🧠 Emotion", emotion)
-            col2.metric("📊 Score", f"{score}/100")
-            col3.metric("⚡ Urgency", urgency)
+                # 🚨 Animated Progress
+                st.markdown("### 🚨 Priority Level")
+                progress = 0
+                bar = st.progress(0)
 
-            # 🎯 Priority Bar
-            st.markdown("### 🚨 Priority Level")
-            st.progress(min(priority / 300, 1.0))  # scaled
+                for i in range(int(priority)):
+                    progress += 1
+                    bar.progress(min(progress / 300, 1.0))
+                    time.sleep(0.01)
 
-            st.write(f"**Priority Score:** {priority}/300")
+                st.write(f"**Priority Score:** {priority}/300")
 
-            # 🧮 Formula
-            st.markdown("### 🧮 Calculation")
-            st.code("Priority = Score × Weight")
-            st.write(f"{score} × {weight} = {priority}")
+                # 🧮 Formula
+                st.markdown("### 🧮 Calculation")
+                st.code("Priority = Score × Weight")
+                st.write(f"{score} × {weight} = {priority}")
 
-            # 💬 Response
-            st.markdown("### 💬 Suggested Response")
-            st.success(response)
+                # 💬 Response
+                st.markdown("### 💬 Suggested Response")
+                st.success(resp)
