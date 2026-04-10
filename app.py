@@ -4,7 +4,7 @@ import google.generativeai as genai
 # 🔐 Add your Gemini API key here
 genai.configure(api_key="YOUR_API_KEY_HERE")
 
-model = genai.GenerativeModel("gemini-1.5-flash")
+model = genai.GenerativeModel("gemini-2.5-flash")
 
 st.set_page_config(page_title="Customer AI", page_icon="🤖")
 st.title("🤖 Customer Frustration Intelligence Engine")
